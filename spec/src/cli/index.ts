@@ -2,6 +2,7 @@
 
 import { Command } from 'commander';
 import { createCommand } from '../commands/create';
+import { setCommand } from '../commands/set';
 
 const program = new Command();
 
@@ -12,6 +13,9 @@ program
 
 // 注册 create 命令
 program.addCommand(createCommand);
+
+// 注册 set 命令
+program.addCommand(setCommand);
 
 // 解析命令行参数
 program.parse(process.argv);
