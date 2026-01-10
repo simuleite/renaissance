@@ -1,0 +1,4 @@
+Parsing TypeScript repository: /home/smulet/astRepo/agent/spec
+Single project detected.
+Building graph for repository spec
+Repository has been parsed and saved to /home/smulet/astRepo/agent/spec/output.json
