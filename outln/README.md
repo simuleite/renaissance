@@ -39,15 +39,47 @@ npm install -g outln
 
 ## Usage
 
-### Basic usage
+### List all symbols
 
 ```bash
 outln <file>
 ```
 
-### Examples
+### Read a specific symbol
 
-#### Go file
+```bash
+outln read <file> <symbol> [options]
+```
+
+The `read` command extracts and displays the complete code for a specific function, class, or method.
+
+## Examples
+
+### Read a specific function (Go)
+
+```bash
+$ outln read gopom.go Parse
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Symbol: Parse
+Type: Function
+Location: gopom.go:10
+Signature: (path string)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Code:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+func Parse(path string) (*Project, error) {
+    file, err := os.Open(path)
+    if err != nil {
+        return nil, err
+    }
+    defer file.Close()
+    ...
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### List all symbols in a file (Go)
 
 ```bash
 $ outln main.go
@@ -70,6 +102,89 @@ class App
 ├── property config
 ├── constructor App
 └── method start
+```
+
+### Read command with JSON output
+
+```bash
+$ outln read app.ts start --output-format json
+{
+  "name": "start",
+  "kind": 11,
+  "kindName": "Function",
+  "detail": "()",
+  "location": {
+    "file": "app.ts",
+    "start": { "line": 15, "character": 0 },
+    "end": { "line": 20, "character": 1 }
+  },
+  "code": "function start() {\n  console.log('Starting...');\n}"
+}
+```
+
+### List all symbols in a file (TypeScript)
+
+```bash
+$ outln app.ts
+interface Config
+├── property port
+└── property host
+
+class App
+├── property config
+├── constructor App
+└── method start
+```
+
+### Read command with compact output
+
+```bash
+$ outln read main.go main --output-format compact
+Function main (main.go:453)
+func main() {
+    flags := flag.NewFlagSet("reni", flag.ExitOnError)
+    ...
+}
+```
+
+## Options
+
+### Main command (list symbols)
+
+```bash
+outln <file> [options]
+```
+
+- `-f, --format <type>` - Output format (json|tree), default: tree
+- `-l, --lang <language>` - Force language provider
+- `-o, --output <file>` - Output to file instead of stdout
+
+### Read command (read specific symbol)
+
+```bash
+outln read <file> <symbol> [options]
+```
+
+- `--output-format <type>` - Output format (compact|rich|json), default: compact
+  - `compact`: Show only the symbol type, name, location, and code
+  - `rich`: Show detailed information with header, children, etc.
+  - `json`: Machine-readable JSON format
+- `-o, --output <file>` - Output to file instead of stdout
+
+### Read command examples
+
+```bash
+# Default: compact format (just the code)
+outln read main.go main
+
+# Rich format (detailed information)
+outln read main.go main --output-format rich
+
+# JSON format
+outln read main.go main --output-format json
+
+# Save to file
+outln read app.ts start -o start_function.txt
 ```
 
 #### Java file
