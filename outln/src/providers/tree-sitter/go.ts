@@ -63,8 +63,14 @@ export class GoProvider extends TreeSitterProvider {
 
   getNodeName(node: treeSitter.SyntaxNode, source: string): string {
     if (node.type === 'package_clause') {
-      const nameNode = node.childForFieldName('name');
-      return nameNode ? nameNode.text : '<anonymous>';
+      // package_clause 的子节点是: [package, package_identifier]
+      // 包名是第二个子节点 (package_identifier)
+      for (const child of node.children) {
+        if (child.type === 'package_identifier') {
+          return child.text;
+        }
+      }
+      return '<anonymous>';
     }
 
     if (node.type === 'type_declaration') {
