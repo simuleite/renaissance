@@ -83,6 +83,25 @@ export function areAllStepsCompleted(e2eTask: E2ETask): boolean {
 }
 
 /**
+ * 检查 CODE_SPEC 是否完成
+ * @param task - 完整的 CodeTask
+ * @returns 如果所有 E2E 任务都已完成（且每个 E2E 都有 Step），返回 true
+ */
+export function isCodeSpecCompleted(task: CodeTask): boolean {
+  const e2eTasks = task.e2eTasks.filter(
+    (e) => e.index !== 'start' && e.index !== 'end'
+  );
+
+  // 没有 E2E = 未完成
+  if (e2eTasks.length === 0) {
+    return false;
+  }
+
+  // 所有 E2E 都必须完成（由 areAllStepsCompleted 决定）
+  return e2eTasks.every((e2e) => areAllStepsCompleted(e2e));
+}
+
+/**
  * 检查并自动完成 E2E 任务
  * @param task - 完整的 CodeTask
  * @param e2eIndex - E2E 任务索引

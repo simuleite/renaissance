@@ -36,7 +36,13 @@ export class AstValidator {
    */
   private async callReniGetAstNode(node: NodeID): Promise<boolean> {
     try {
-      const nodesParam = JSON.stringify([node]);
+      // 转换 camelCase 到 snake_case（兼容旧格式）
+      const normalizedNode = {
+        mod_path: (node as any).mod_path || (node as any).modPath,
+        pkg_path: (node as any).pkg_path || (node as any).pkgPath,
+        name: node.name
+      };
+      const nodesParam = JSON.stringify([normalizedNode]);
       const cmd = `reni cli get_ast_node '${this.repoName}' '${nodesParam}'`;
 
       const { stdout } = await execAsync(cmd, {
@@ -54,6 +60,15 @@ export class AstValidator {
    * 验证单个 AST Node
    */
   async validateNode(node: NodeID): Promise<NodeValidationResult> {
+    // 转换 camelCase 到 snake_case（兼容旧格式）
+    const normalizedNode = {
+      mod_path: (node as any).mod_path || (node as any).modPath,
+      pkg_path: (node as any).pkg_path || (node as any).pkgPath,
+      name: node.name
+    };
+    const nodesParam = JSON.stringify([normalizedNode]);
+    const cmd = `reni cli get_ast_node '${this.repoName}' '${nodesParam}'`;
+
     try {
       const valid = await this.callReniGetAstNode(node);
 
@@ -63,7 +78,7 @@ export class AstValidator {
         return {
           valid: false,
           node,
-          error: `Node '${node.name}' not found in repository '${this.repoName}'`,
+          error: `Command failed: ${cmd}`,
           hint: `Use 'reni cli get_repo_structure ${this.repoName}' to list available nodes`
         };
       }
@@ -71,7 +86,7 @@ export class AstValidator {
       return {
         valid: false,
         node,
-        error: error.message || 'Unknown validation error',
+        error: `${error.message || 'Unknown error'}\n  Command: ${cmd}`,
         hint: 'Check if reni CLI is properly installed'
       };
     }

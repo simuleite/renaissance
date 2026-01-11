@@ -1,9 +1,10 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { detectProject } from '../utils/project-detector';
-import { createTaskFile } from '../utils/fs';
-import { updateCurrentSpec } from '../utils/config';
+import { createTaskFile, readTaskFile } from '../utils/fs';
+import { updateCurrentSpec, readConfig } from '../utils/config';
 import { formatCreateSuccess } from '../utils/format';
+import { isCodeSpecCompleted } from '../utils/schedule';
 import * as path from 'path';
 import * as os from 'os';
 
@@ -31,6 +32,25 @@ export const createCommand = new Command('create')
         taskName,
         options.description || ''
       );
+
+      // 检查当前任务是否完成，决定是否自动切换
+      let shouldAutoSwitch = true;
+      const config = await readConfig();
+
+      if (config?.currentSpecPath) {
+        try {
+          const currentTask = await readTaskFile(config.currentSpecPath);
+          if (!isCodeSpecCompleted(currentTask)) {
+            shouldAutoSwitch = false;
+            console.log(chalk.green('✓ Created CODE_SPEC: ') + taskName);
+            console.log(chalk.yellow(`\n⚠️  当前 CODE_SPEC "${currentTask.metadata.taskName}" 尚未完成`));
+            console.log(chalk.yellow(`   新任务已创建，请检查后使用 'spec set' 手动切换`));
+            return;
+          }
+        } catch {
+          // 当前任务文件不存在或读取失败，允许切换
+        }
+      }
 
       // 更新工作目录配置
       await updateCurrentSpec(taskFilePath);

@@ -63,10 +63,32 @@ async function validateAllSteps(
   for (const e2eTask of task.e2eTasks) {
     if (e2eTask.index === 'start' || e2eTask.index === 'end') continue;
 
+    // 检查 E2E 是否有实际的 Step
+    const realSteps = e2eTask.steps.filter(
+      (s) => s.index !== 'start' && s.index !== 'end'
+    );
+
+    if (realSteps.length === 0) {
+      // E2E 没有 Step，添加验证错误
+      allResults.push({
+        e2eIndex: e2eTask.index as number,
+        e2eName: e2eTask.name,
+        stepIndex: 0,
+        stepName: '',
+        action: '',
+        status: StepStatus.PENDING,
+        valid: false,
+        message: `E2E "${e2eTask.name}" 没有任何 Step，validate 不通过`
+      });
+      continue;
+    }
+
     for (const step of e2eTask.steps) {
       if (step.index === 'start' || step.index === 'end') continue;
 
       const result = await validateStep(step, validator);
+      // 添加 e2eIndex 信息
+      result.e2eIndex = e2eTask.index as number;
       allResults.push(result);
 
       if (step.status === StepStatus.NEED_AST_NODE) {
@@ -173,7 +195,16 @@ function displayValidationResults(
                  result.needAstNode ? chalk.yellow('⚠') :
                  chalk.red('✗');
 
-    console.log(`  ${icon} [${result.stepIndex}] ${result.stepName} (${result.action})`);
+    // 处理 E2E 无 Step 的特殊情况
+    if (result.message && result.stepName === '') {
+      console.log(`  ${icon} [E2E ${result.e2eIndex}] ${result.e2eName}`);
+      console.log(chalk.red(`    ✗ ${result.message}`));
+      continue;
+    }
+
+    // 显示 [e2eIndex.stepIndex] 格式
+    const indexLabel = result.e2eIndex ? `${result.e2eIndex}.${result.stepIndex}` : `${result.stepIndex}`;
+    console.log(`  ${icon} [${indexLabel}] ${result.stepName} (${result.action})`);
 
     // 显示详细信息
     if (!result.valid || verbose) {
@@ -237,6 +268,8 @@ function displayValidationSummary(summary: {
  * Step 验证结果
  */
 interface StepValidationResult {
+  e2eIndex?: number;
+  e2eName?: string;
   stepIndex: number;
   stepName: string;
   action: string;

@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { CodeTask, E2ETask, Step } from '../types';
+import { isCodeSpecCompleted } from './schedule';
 
 /**
  * 格式化 spec create 成功输出
@@ -205,6 +206,12 @@ export function formatStepBatchCreateSuccess(
  */
 export function formatTaskList(task: CodeTask): string {
   const lines: string[] = [];
+
+  // SPEC 头部：显示名称和完成状态
+  const specCompleted = isCodeSpecCompleted(task);
+  const specStatus = specCompleted ? chalk.green('✓') : '[ ]';
+  lines.push(`${specStatus} CODE_SPEC: ${task.metadata.taskName}`);
+  lines.push('');
 
   task.e2eTasks.forEach((e2eTask, e2eIndex) => {
     if (e2eTask.index === 'start' || e2eTask.index === 'end') return;
