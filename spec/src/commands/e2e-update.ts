@@ -7,6 +7,7 @@ import { writeTaskFileAtomic } from '../utils/atomic-file';
 import {
   formatUpdateSuccess,
   formatInsertSuccess,
+  formatPrependSuccess,
   formatDeleteSuccess,
   formatCompletedSuccess,
   formatUncompletedSuccess,
@@ -42,6 +43,68 @@ async function updateE2ETask(
   if (updates.e2eOutput !== undefined) task.e2eOutput = updates.e2eOutput;
 
   taskData.e2eTasks[taskIndex] = task;
+}
+
+/**
+ * 前置插入 E2E 任务（在列表最前面插入）
+ */
+async function prependE2ETask(
+  taskData: CodeTask,
+  newTask: Partial<E2ETask>
+): Promise<void> {
+  // 如果任务列表为空，直接创建第一个任务
+  if (taskData.e2eTasks.length === 0) {
+    const newNode: E2ETask = {
+      index: 1,
+      name: newTask.name!,
+      e2eInput: newTask.e2eInput!,
+      e2eOutput: newTask.e2eOutput!,
+      completed: false,
+      steps: [],
+      prevE2EIndex: 'start',
+      nextE2EIndex: 'end',
+    };
+    taskData.e2eTasks.push(newNode);
+    return;
+  }
+
+  // 找到原 index 1 的任务
+  const firstTaskIndex = taskData.e2eTasks.findIndex((t) => t.index === 1);
+  if (firstTaskIndex === -1) {
+    throw new Error('Task with index 1 not found');
+  }
+  const firstTask = taskData.e2eTasks[firstTaskIndex];
+
+  // 所有现有任务 index +1
+  taskData.e2eTasks
+    .filter((t) => typeof t.index === 'number')
+    .forEach((t) => {
+      t.index = (t.index as number) + 1;
+      if (t.nextE2EIndex !== 'end' && typeof t.nextE2EIndex === 'number') {
+        t.nextE2EIndex = t.nextE2EIndex + 1;
+      }
+      if (t.prevE2EIndex !== 'start' && typeof t.prevE2EIndex === 'number') {
+        t.prevE2EIndex = t.prevE2EIndex + 1;
+      }
+    });
+
+  // 创建新任务（index = 1）
+  const newNode: E2ETask = {
+    index: 1,
+    name: newTask.name!,
+    e2eInput: newTask.e2eInput!,
+    e2eOutput: newTask.e2eOutput!,
+    completed: false,
+    steps: [],
+    prevE2EIndex: 'start',
+    nextE2EIndex: 2, // 指向原 index 1（现在变成 index 2）
+  };
+
+  // 调整原 index 1 任务（现在变成 index 2）的 prevE2EIndex
+  firstTask.prevE2EIndex = 1;
+
+  // 插入新任务到数组开头
+  taskData.e2eTasks.unshift(newNode);
 }
 
 /**
@@ -289,6 +352,7 @@ export const e2eUpdateCommand = new Command('update')
   .argument('[output]', '预期端到端输出')
   .option('-d, --delete', '删除指定 E2E 任务')
   .option('-i, --insert', '在指定位置后插入新任务')
+  .option('-p, --prepend', '在任务列表最前面插入新任务')
   .option('-c, --complete', '标记为已完成')
   .option('-u, --uncomplete', '标记为未完成')
   .option('-b, --batch <jsonFile>', '批量创建模式，指定 JSON 文件路径')
@@ -309,6 +373,7 @@ export const e2eUpdateCommand = new Command('update')
 
         const taskData = await readTaskFile(config.currentSpecPath);
 
+        // === 分支1：无需参数的操作 ===
         // 批量创建模式
         if (options.batch) {
           const result = await batchCreateE2ETasks(taskData, options.batch);
@@ -317,10 +382,44 @@ export const e2eUpdateCommand = new Command('update')
           return;
         }
 
-        // 验证必需参数（对于update/insert模式）
+        // 删除模式
+        if (options.delete) {
+          const parsedIndex = parseInt(index, 10);
+          if (isNaN(parsedIndex)) {
+            throw new Error('Invalid index format');
+          }
+          const result = await deleteE2ETask(taskData, parsedIndex);
+          await writeTaskFileAtomic(config.currentSpecPath, taskData);
+          console.log(formatDeleteSuccess(result.newIndex, result.name));
+          return;
+        }
+
+        // 完成状态切换
+        if (options.complete || options.uncomplete) {
+          if (options.complete) {
+            // 禁用手动完成 E2E，引导用户使用 step complete
+            console.error(chalk.red('Error: E2E tasks cannot be manually completed.'));
+            console.log(chalk.yellow('\nHint: E2E tasks are automatically completed when all their steps are finished.'));
+            console.log(chalk.yellow('Use: spec step update <e2e_index> <step_index> --complete'));
+            process.exit(1);
+          }
+
+          // 允许取消完成
+          const parsedIndex = parseInt(index, 10);
+          if (isNaN(parsedIndex)) {
+            throw new Error('Invalid index format');
+          }
+          const result = await updateE2EStatus(taskData, parsedIndex, false);
+          await writeTaskFileAtomic(config.currentSpecPath, taskData);
+          console.log(formatUncompletedSuccess(parsedIndex, result.name));
+          return;
+        }
+
+        // === 分支2：需要参数的操作 ===
+        // 验证必需参数（对于update/insert/prepend模式）
         if (!name || !input || !output) {
           throw new Error(
-            'Name, input, and output are required for update/insert'
+            'Name, input, and output are required for update/insert/prepend'
           );
         }
 
@@ -369,28 +468,15 @@ export const e2eUpdateCommand = new Command('update')
           }
         }
 
-        // 删除模式
-        if (options.delete) {
-          const result = await deleteE2ETask(taskData, numIndex);
+        // Prepend 模式（在列表最前面插入）
+        if (options.prepend) {
+          await prependE2ETask(taskData, {
+            name,
+            e2eInput: input,
+            e2eOutput: output,
+          });
           await writeTaskFileAtomic(config.currentSpecPath, taskData);
-          console.log(formatDeleteSuccess(result.newIndex, result.name));
-          return;
-        }
-
-        // 完成状态切换
-        if (options.complete || options.uncomplete) {
-          if (options.complete) {
-            // 禁用手动完成 E2E，引导用户使用 step complete
-            console.error(chalk.red('Error: E2E tasks cannot be manually completed.'));
-            console.log(chalk.yellow('\nHint: E2E tasks are automatically completed when all their steps are finished.'));
-            console.log(chalk.yellow('Use: spec step update <e2e_index> <step_index> --complete'));
-            process.exit(1);
-          }
-
-          // 允许取消完成
-          const result = await updateE2EStatus(taskData, numIndex, false);
-          await writeTaskFileAtomic(config.currentSpecPath, taskData);
-          console.log(formatUncompletedSuccess(numIndex, result.name));
+          console.log(formatPrependSuccess(taskData, name));
           return;
         }
 

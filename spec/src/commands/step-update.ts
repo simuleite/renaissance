@@ -8,6 +8,7 @@ import { StepStatus } from '../types';
 import {
   formatStepUpdateSuccess,
   formatStepInsertSuccess,
+  formatStepPrependSuccess,
   formatStepDeleteSuccess,
   formatStepCompletedSuccess,
   formatStepUncompletedSuccess,
@@ -99,6 +100,113 @@ async function updateStep(
   if (updates.additionalInfo !== undefined) step.additionalInfo = updates.additionalInfo;
 
   e2eTask.steps[stepIndexInArray] = step;
+}
+
+/**
+ * 前置插入 Step（在步骤列表最前面插入）
+ */
+async function prependStep(
+  taskData: CodeTask,
+  e2eIndex: number,
+  newStep: Partial<Step>
+): Promise<void> {
+  const e2eTaskIndex = taskData.e2eTasks.findIndex(
+    (t) => t.index === e2eIndex
+  );
+
+  if (e2eTaskIndex === -1) {
+    throw new Error(`E2E task with index ${e2eIndex} not found`);
+  }
+
+  const e2eTask = taskData.e2eTasks[e2eTaskIndex];
+
+  // 如果 steps 数组为空，直接创建第一个 step
+  if (e2eTask.steps.length === 0) {
+    const newNode: Step = {
+      e2eIndex: e2eIndex,
+      index: 1,
+      name: newStep.name!,
+      filePath: newStep.filePath!,
+      relatedNodes: newStep.relatedNodes || [],
+      action: newStep.action!,
+      completed: false,
+      status: newStep.action === 'modify' && !newStep.stepNode
+        ? StepStatus.NEED_AST_NODE
+        : StepStatus.PENDING,
+      stepNode: newStep.stepNode,
+      additionalInfo: newStep.additionalInfo,
+      prevStepIndex: 'start',
+      nextStepIndex: 'end',
+    };
+
+    // 验证 action=modify 时是否提供 stepNode
+    if (newStep.action === 'modify' && !newStep.stepNode) {
+      console.warn(chalk.yellow(
+        `\n⚠ Warning: Step created but missing required stepNode\n` +
+        `  Status: ${StepStatus.NEED_AST_NODE}\n` +
+        `  Hint: Update with: spec step update ${e2eIndex} 1 ` +
+        `--step-node '{"modPath":"...","pkgPath":"...","name":"..."}'\n`
+      ));
+    }
+
+    e2eTask.steps.push(newNode);
+    return;
+  }
+
+  // 找到原 index 1 的 step
+  const firstStepIndex = e2eTask.steps.findIndex((s) => s.index === 1);
+  if (firstStepIndex === -1) {
+    throw new Error('Step with index 1 not found in E2E task ${e2eIndex}');
+  }
+  const firstStep = e2eTask.steps[firstStepIndex];
+
+  // 所有现有步骤 index +1
+  e2eTask.steps
+    .filter((s) => typeof s.index === 'number')
+    .forEach((s) => {
+      s.index = (s.index as number) + 1;
+      if (s.nextStepIndex !== 'end' && typeof s.nextStepIndex === 'number') {
+        s.nextStepIndex = s.nextStepIndex + 1;
+      }
+      if (s.prevStepIndex !== 'start' && typeof s.prevStepIndex === 'number') {
+        s.prevStepIndex = s.prevStepIndex + 1;
+      }
+    });
+
+  // 验证 action=modify 时是否提供 stepNode
+  if (newStep.action === 'modify' && !newStep.stepNode) {
+    // 软验证：设置 NEED_AST_NODE 状态并输出警告
+    console.warn(chalk.yellow(
+      `\n⚠ Warning: Step created but missing required stepNode\n` +
+      `  Status: ${StepStatus.NEED_AST_NODE}\n` +
+      `  Hint: Update with: spec step update ${e2eIndex} 1 ` +
+      `--step-node '{"modPath":"...","pkgPath":"...","name":"..."}'\n`
+    ));
+  }
+
+  // 创建新步骤（index = 1）
+  const newNode: Step = {
+    e2eIndex: e2eIndex,
+    index: 1,
+    name: newStep.name!,
+    filePath: newStep.filePath!,
+    relatedNodes: newStep.relatedNodes || [],
+    action: newStep.action!,
+    completed: false,
+    status: newStep.action === 'modify' && !newStep.stepNode
+      ? StepStatus.NEED_AST_NODE
+      : StepStatus.PENDING,
+    stepNode: newStep.stepNode,
+    additionalInfo: newStep.additionalInfo,
+    prevStepIndex: 'start',
+    nextStepIndex: 2, // 指向原 index 1（现在变成 index 2）
+  };
+
+  // 调整原 index 1 步骤（现在变成 index 2）的 prevStepIndex
+  firstStep.prevStepIndex = 1;
+
+  // 插入新节点到数组开头
+  e2eTask.steps.unshift(newNode);
 }
 
 /**
@@ -447,6 +555,7 @@ export const stepUpdateAction = new Command('update')
   .argument('[action]', '动作类型 (create/modify/delete)')
   .option('-d, --delete', '删除指定 Step')
   .option('-i, --insert', '在指定位置后插入新 Step')
+  .option('-p, --prepend', '在步骤列表最前面插入新 Step')
   .option('-c, --complete', '标记为已完成')
   .option('-u, --uncomplete', '标记为未完成')
   .option('-b, --batch <jsonFile>', '批量创建模式，指定 JSON 文件路径')
@@ -489,7 +598,38 @@ export const stepUpdateAction = new Command('update')
           return;
         }
 
-        // 验证 step_index 参数
+        // 删除模式
+        if (options.delete) {
+          // 验证 step_index 参数（删除模式下必需）
+          if (!stepIndex) {
+            throw new Error('Step index is required for delete mode');
+          }
+
+          const numStepIndex = parseInt(stepIndex, 10);
+          if (isNaN(numStepIndex)) {
+            throw new Error('Invalid step index format');
+          }
+
+          const result = await deleteStep(taskData, numE2EIndex, numStepIndex);
+          await writeTaskFileAtomic(config.currentSpecPath, taskData);
+          console.log(formatStepDeleteSuccess(numE2EIndex, result.newIndex, result.name));
+          return;
+        }
+
+        // Prepend 模式（在步骤列表最前面插入）
+        if (options.prepend) {
+          await prependStep(taskData, numE2EIndex, {
+            name,
+            filePath,
+            relatedNodes: [],
+            action: action as 'create' | 'modify' | 'delete',
+          });
+          await writeTaskFileAtomic(config.currentSpecPath, taskData);
+          console.log(formatStepPrependSuccess(taskData, numE2EIndex, 1, name));
+          return;
+        }
+
+        // 验证 step_index 参数（非 prepend/delete 模式下必需）
         if (!stepIndex) {
           throw new Error('Step index is required');
         }
@@ -497,14 +637,6 @@ export const stepUpdateAction = new Command('update')
         const numStepIndex = parseInt(stepIndex, 10);
         if (isNaN(numStepIndex)) {
           throw new Error('Invalid step index format');
-        }
-
-        // 删除模式
-        if (options.delete) {
-          const result = await deleteStep(taskData, numE2EIndex, numStepIndex);
-          await writeTaskFileAtomic(config.currentSpecPath, taskData);
-          console.log(formatStepDeleteSuccess(numE2EIndex, result.newIndex, result.name));
-          return;
         }
 
         // 完成状态切换
@@ -574,7 +706,9 @@ export const stepUpdateAction = new Command('update')
 
           if (options.stepNode) {
             try {
-              stepNode = JSON.parse(options.stepNode);
+              const parsed = JSON.parse(options.stepNode);
+              // 确保 stepNode 始终为数组
+              stepNode = Array.isArray(parsed) ? parsed : [parsed];
             } catch (error) {
               throw new Error('Invalid JSON format for --step-node');
             }
@@ -633,7 +767,9 @@ export const stepUpdateAction = new Command('update')
 
         if (options.stepNode) {
           try {
-            stepNode = JSON.parse(options.stepNode);
+            const parsed = JSON.parse(options.stepNode);
+            // 确保 stepNode 始终为数组
+            stepNode = Array.isArray(parsed) ? parsed : [parsed];
           } catch (error) {
             throw new Error('Invalid JSON format for --step-node');
           }

@@ -49,6 +49,29 @@ export function formatInsertSuccess(index: number, name: string): string {
 }
 
 /**
+ * 格式化前置插入成功输出
+ */
+export function formatPrependSuccess(taskData: CodeTask, name: string): string {
+  const lines: string[] = [];
+  lines.push(chalk.green('✓ Prepended: ') + `[1] ${name}`);
+
+  // 查找 prepend 的任务（index = 1）
+  const prependedTask = taskData.e2eTasks.find((t) => t.index === 1);
+  if (prependedTask) {
+    // 查找下一个任务（nextE2EIndex 指向的任务）
+    const nextTask = taskData.e2eTasks.find(
+      (t) => t.index === prependedTask.nextE2EIndex
+    );
+
+    if (nextTask && typeof nextTask.index === 'number' && nextTask.index === 2) {
+      lines.push(chalk.dim(`→ Next: [2] ${nextTask.name}`));
+    }
+  }
+
+  return lines.join('\n');
+}
+
+/**
  * 格式化完成状态更新输出
  */
 export function formatCompletedSuccess(index: number, name: string): string {
@@ -105,6 +128,38 @@ export function formatStepInsertSuccess(
   name: string
 ): string {
   return chalk.green('✓ Inserted: ') + `[${e2eIndex}.${stepIndex}] ${name}`;
+}
+
+/**
+ * 格式化 Step 前置插入成功输出
+ */
+export function formatStepPrependSuccess(
+  taskData: CodeTask,
+  e2eIndex: number,
+  stepIndex: number,
+  name: string
+): string {
+  const lines: string[] = [];
+  lines.push(chalk.green('✓ Prepended: ') + `[${e2eIndex}.${stepIndex}] ${name}`);
+
+  // 查找 E2E 任务
+  const e2eTask = taskData.e2eTasks.find((t) => t.index === e2eIndex);
+  if (e2eTask) {
+    // 查找 prepend 的步骤（index = 1）
+    const prependedStep = e2eTask.steps.find((s) => s.index === 1);
+    if (prependedStep) {
+      // 查找下一个步骤（nextStepIndex 指向的步骤）
+      const nextStep = e2eTask.steps.find(
+        (s) => s.index === prependedStep.nextStepIndex
+      );
+
+      if (nextStep && typeof nextStep.index === 'number' && nextStep.index === 2) {
+        lines.push(chalk.dim(`→ Next: [${e2eIndex}.2] ${nextStep.name}`));
+      }
+    }
+  }
+
+  return lines.join('\n');
 }
 
 /**

@@ -112,10 +112,11 @@ async function validateStep(
 
   // 验证 stepNode（action=modify 时）
   if (step.action === 'modify' && step.stepNode) {
-    // stepNode 现在是数组，需要遍历验证
+    // stepNode 应该是数组，但也要处理向后兼容
+    const stepNodeArray = Array.isArray(step.stepNode) ? step.stepNode : [step.stepNode];
     const stepNodesResults: NodeValidationResult[] = [];
 
-    for (const node of step.stepNode) {
+    for (const node of stepNodeArray) {
       const nodeResult = await validator.validateNode(node);
       stepNodesResults.push(nodeResult);
 
