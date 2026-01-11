@@ -73,6 +73,6 @@ spec e2e update 1 --delete
 ```
 
 **Related:**
-- `spec create` - New CODE_TASK
+- `spec create` - New CODE_SPEC
 - `spec set` - Switch task
 - `spec step update` - Manage steps

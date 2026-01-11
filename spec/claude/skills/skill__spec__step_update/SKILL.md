@@ -11,12 +11,16 @@ spec step update <e2e_index> <step_index> [name] [file_path] [action]
 
 **Usage:**
 ```bash
-# Create step (requires full params)
+# Create step (smart insert - auto-selects next available index)
 spec step update 1 1 "创建Redis客户端" "clients/redis.go" "create"
 
-# Update existing step (partial params allowed)
-spec step update 1 1 --step-node '{"modPath":"...","pkgPath":"...","name":"..."}'
-spec step update 1 1 "新名称" --additional-info "更新信息"
+# Update existing step - Full params (all fields)
+spec step update 1 1 "更新后的名称" "clients/redis_v2.go" "modify" --step-node '{"modPath":"...","pkgPath":"...","name":"..."}'
+
+# Update existing step - Partial params (only specific fields)
+spec step update 1 1 "新名称"  # 仅更新名称
+spec step update 1 1 "" "" "" --step-node '{"modPath":"..."}'  # 仅更新 stepNode
+spec step update 1 1 "" "" "" --additional-info "更新信息"  # 仅更新附加信息
 
 # Prepend step (insert at the beginning)
 spec step update 1 "" "新步骤" "file.go" "create" --prepend
@@ -32,8 +36,8 @@ spec step update 1 batch steps.json
 ```
 
 **Smart Mode:**
-- **Existing step**: Any combination of parameters works (name/file_path/action optional)
-- **New step**: Requires name, file_path, and action
+- **Existing step**: Updates with any combination of parameters (name/file_path/action/step-node/related-nodes/additional-info all optional)
+- **New step**: Automatically inserts at next available position, requires name, file_path, and action
 
 **Options:**
 - `--delete`: Delete step
@@ -85,6 +89,6 @@ spec step update 1 batch steps.json
 ```
 
 **Related:**
-- `spec create` - Create CODE_TASK
+- `spec create` - Create CODE_SPEC
 - `spec set` - Set current task
 - `spec e2e update` - Manage E2E tasks

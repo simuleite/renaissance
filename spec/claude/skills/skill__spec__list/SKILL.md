@@ -1,9 +1,9 @@
 ---
 name: skill__spec__list
-description: skill__spec__list `spec list` [LIST] Display current CODE_TASK with formatted tree structure showing E2E tasks and steps with completion status.
+description: skill__spec__list `spec list` [LIST] Display current CODE_SPEC with formatted tree structure showing E2E tasks and steps with completion status.
 ---
 
-Execute the spec list command to display the current CODE_TASK:
+Execute the spec list command to display the current CODE_SPEC:
 
 ```bash
 spec list
@@ -34,7 +34,7 @@ spec list
 
 ```
 {
-  "description": "[LIST] Display current CODE_TASK with formatted tree structure showing E2E tasks and steps with completion status. Automatically filters start/end nodes and displays metadata.",
+  "description": "[LIST] Display current CODE_SPEC with formatted tree structure showing E2E tasks and steps with completion status. Automatically filters start/end nodes and displays metadata.",
   "inputSchema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "properties": {},
@@ -46,7 +46,7 @@ spec list
 ```
 
 **When to use:**
-- View current CODE_TASK structure
+- View current CODE_SPEC structure
 - Check completion status of tasks
 - Review E2E task and step hierarchy
 - Verify task file content before updates
@@ -54,7 +54,7 @@ spec list
 
 **Example workflow:**
 ```bash
-# Create a new CODE_TASK
+# Create a new CODE_SPEC
 spec create my-feature
 
 # List the task (shows empty structure)
@@ -74,8 +74,8 @@ spec list
 ```
 
 **Related Commands:**
-- `spec create` - Create new CODE_TASK
-- `spec set` - Set current CODE_TASK
+- `spec create` - Create new CODE_SPEC
+- `spec set` - Set current CODE_SPEC
 - `spec e2e update` - Update E2E tasks
 - `spec step update` - Update step tasks
 

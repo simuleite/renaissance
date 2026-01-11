@@ -1,21 +1,23 @@
 ---
 name: skill__spec__create
-description: skill__spec__create `spec create` [CREATE] Create new CODE_TASK.
+description: skill__spec__create `spec create` [CREATE] Create new CODE_SPEC.
 ---
 
-Execute the spec create command to create a new CODE_TASK:
+Execute the spec create command to create a new CODE_SPEC:
 
 ```bash
 spec create <taskName> [options]
 ```
 
 **Expected Output:**
-- New CODE_TASK JSON file created
+- New CODE_SPEC JSON file created
+- Current working directory configuration updated
 - Success message with task details
 
 ```
 ✓ Created CODE TASK: my-feature
 Current CODE TASK: my-feature
+Repository: github.com/user/myapp
 ```
 
 **Parameters:**
@@ -26,7 +28,7 @@ Current CODE TASK: my-feature
 
 ```
 {
-  "description": "[CREATE] Create new CODE_TASK.",
+  "description": "[CREATE] Create new CODE_SPEC.",
   "inputSchema": {
     "$schema": "https://json-schema.org/draft-2020-12/schema",
     "properties": {
@@ -49,7 +51,7 @@ Current CODE TASK: my-feature
 
 **When to use:**
 - Start a new development task or feature
-- Initialize a new CODE_TASK for tracking
+- Initialize a new CODE_SPEC for tracking
 - Begin a new E2E testing workflow
 - Create a new task with automatic project setup
 
@@ -68,7 +70,7 @@ spec list  # Shows the newly created task
 ```
 
 **Related Commands:**
-- `spec set` - Set existing CODE_TASK as current
-- `spec list` - Display current CODE_TASK
+- `spec set` - Set existing CODE_SPEC as current
+- `spec list` - Display current CODE_SPEC
 - `spec e2e update` - Add/update E2E tasks
 - `spec step update` - Add/update step tasks

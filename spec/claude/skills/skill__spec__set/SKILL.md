@@ -1,9 +1,9 @@
 ---
 name: skill__spec__set
-description: skill__spec__set `spec set` [SET] Switch to existing CODE_TASK by date and task name. Updates current working directory configuration to point to specified task file.
+description: skill__spec__set `spec set <yyyy-mm-dd> <taskName>` [SET] Switch to existing CODE_SPEC.
 ---
 
-Execute the spec set command to set an existing CODE_TASK as current:
+Execute the spec set command to set an existing CODE_SPEC as current:
 
 ```bash
 spec set <date> <taskName>
@@ -24,7 +24,7 @@ Current CODE TASK: my-feature
 
 ```
 {
-  "description": "[SET] Switch to existing CODE_TASK by date and task name. Validates date format, detects project, verifies task file exists, and updates current directory configuration. Supports both Go and TypeScript projects.",
+  "description": "[SET] Switch to existing CODE_SPEC by date and task name. Validates date format, detects project, verifies task file exists, and updates current directory configuration. Supports both Go and TypeScript projects.",
   "inputSchema": {
     "$schema": "https://json-schema.org/draft-2020-12/schema",
     "properties": {
@@ -87,8 +87,8 @@ The command validates the date format strictly:
 | `mm/dd/yyyy` | ❌ | `01/11/2025` |
 
 **Related Commands:**
-- `spec create` - Create new CODE_TASK
-- `spec list` - Display current CODE_TASK (use to verify)
+- `spec create` - Create new CODE_SPEC
+- `spec list` - Display current CODE_SPEC (use to verify)
 - `spec e2e update` - Update E2E tasks (after setting)
 - `spec step update` - Update step tasks (after setting)
 
