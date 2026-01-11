@@ -12,7 +12,7 @@ export function formatCreateSuccess(
   return [
     chalk.green('✓ Created CODE TASK: ') + taskName,
     'Current CODE TASK: ' + taskName,
-    'Repository: ' + repoName,
+    // 'Repository: ' + repoName,
     // 'Spec file: ' + specPath
   ].join('\n');
 }

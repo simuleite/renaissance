@@ -42,12 +42,12 @@ export interface Step {
   completed: boolean;               // 完成状态
   status?: StepStatus;              // Step 状态（默认 PENDING）
 
-  // action=modify时必填
+  // action=modify时必填，支持多个node
   stepNode?: {
-    modPath: string;    // 模块路径
-    pkgPath: string;    // 包路径
+    mod_path: string;    // 模块路径
+    pkg_path: string;    // 包路径
     name: string;       // 节点名称
-  };
+  }[];
 
   additionalInfo?: string;           // 附加信息
   nextStepIndex?: number | 'end';   // 链表指针：下一个步骤
@@ -81,10 +81,10 @@ export interface SpecStepUpdateOptions {
   stepAction?: 'modify' | 'create' | 'delete';
   stepRelatedNodes?: string[];
   stepNode?: {
-    modPath: string;
-    pkgPath: string;
+    mod_path: string;
+    pkg_path: string;
     name: string;
-  };
+  }[];
 }
 
 // 工作目录配置文件

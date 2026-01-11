@@ -21,8 +21,7 @@ export interface ProjectInfo {
 /**
  * 检测当前目录的项目类型并获取repo名称
  * @param cwd 当前工作目录，默认为 process.cwd()
- * @returns 项目信息
- * @throws Error 如果无法识别项目类型
+ * @returns 项目信息（对于不支持的语言，使用目录名称作为repo名称）
  */
 export async function detectProject(cwd: string = process.cwd()): Promise<ProjectInfo> {
   const goModPath = path.join(cwd, 'go.mod');
@@ -54,8 +53,10 @@ export async function detectProject(cwd: string = process.cwd()): Promise<Projec
     }
   }
 
-  // 无法识别项目类型
-  throw new Error(
-    'Cannot identify project type (go.mod or package.json not found)'
-  );
+  // 无法识别项目类型时，使用目录名称作为 repo 名称
+  const dirName = path.basename(cwd);
+  return {
+    type: ProjectType.UNKNOWN,
+    repoName: dirName || 'unknown'
+  };
 }

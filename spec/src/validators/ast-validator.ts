@@ -8,9 +8,9 @@ const execAsync = promisify(exec);
  * 用于精确定位仓库中的某个 AST 节点
  */
 export interface NodeID {
-  modPath: string;    // 模块路径
-  pkgPath: string;    // 包路径
-  name: string;       // 节点名称
+  mod_path: string;    // 模块路径
+  pkg_path: string;    // 包路径
+  name: string;        // 节点名称
 }
 
 /**

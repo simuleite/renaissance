@@ -337,10 +337,10 @@ interface BatchStepInput {
   action: 'create' | 'modify' | 'delete';
   relatedNodes?: string[];
   stepNode?: {
-    modPath: string;
-    pkgPath: string;
+    mod_path: string;
+    pkg_path: string;
     name: string;
-  };
+  }[];
   additionalInfo?: string;
 }
 
@@ -536,7 +536,7 @@ export const stepUpdateAction = new Command('update')
         // 如果 step 存在（更新模式），允许部分参数
         if (stepExists && (!name || !filePath || !action)) {
           // 解析可选参数（即使没有提供 name/filePath/action，也可以提供其他参数）
-          let stepNode: { modPath: string; pkgPath: string; name: string } | undefined;
+          let stepNode: { mod_path: string; pkg_path: string; name: string }[] | undefined;
           let relatedNodes: string[] | undefined;
           let additionalInfo: string | undefined;
 
@@ -588,7 +588,7 @@ export const stepUpdateAction = new Command('update')
 
         // 解析可选参数（用于插入模式）
         let relatedNodes: string[] = [];
-        let stepNode: { modPath: string; pkgPath: string; name: string } | undefined;
+        let stepNode: { mod_path: string; pkg_path: string; name: string }[] | undefined;
         let additionalInfo: string | undefined;
 
         if (options.relatedNodes) {

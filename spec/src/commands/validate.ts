@@ -112,11 +112,18 @@ async function validateStep(
 
   // 验证 stepNode（action=modify 时）
   if (step.action === 'modify' && step.stepNode) {
-    const stepNodeResult = await validator.validateNode(step.stepNode);
-    if (!stepNodeResult.valid) {
-      result.valid = false;
-      result.stepNodeInvalid = true;
-      result.stepNodeError = stepNodeResult.error;
+    // stepNode 现在是数组，需要遍历验证
+    const stepNodesResults: NodeValidationResult[] = [];
+
+    for (const node of step.stepNode) {
+      const nodeResult = await validator.validateNode(node);
+      stepNodesResults.push(nodeResult);
+
+      if (!nodeResult.valid) {
+        result.valid = false;
+        result.stepNodeInvalid = true;
+        result.stepNodeError = nodeResult.error;
+      }
     }
   }
 
