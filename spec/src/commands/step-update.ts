@@ -512,10 +512,72 @@ export const stepUpdateAction = new Command('update')
           return;
         }
 
-        // 验证必需参数
+        // 智能选择模式：检查 E2E task 是否存在
+        const e2eTaskIndex = taskData.e2eTasks.findIndex(
+          (t) => t.index === numE2EIndex
+        );
+
+        if (e2eTaskIndex === -1) {
+          throw new Error(`E2E task with index ${numE2EIndex} not found`);
+        }
+
+        const e2eTask = taskData.e2eTasks[e2eTaskIndex];
+
+        // 检查 step 是否存在
+        const stepExists = e2eTask.steps.some((s) => s.index === numStepIndex);
+
+        // 如果 step 不存在（插入模式），需要完整参数
+        if (!stepExists && !name && !filePath && !action) {
+          throw new Error(
+            'Name, file_path, and action are required for insert mode'
+          );
+        }
+
+        // 如果 step 存在（更新模式），允许部分参数
+        if (stepExists && (!name || !filePath || !action)) {
+          // 解析可选参数（即使没有提供 name/filePath/action，也可以提供其他参数）
+          let stepNode: { modPath: string; pkgPath: string; name: string } | undefined;
+          let relatedNodes: string[] | undefined;
+          let additionalInfo: string | undefined;
+
+          if (options.stepNode) {
+            try {
+              stepNode = JSON.parse(options.stepNode);
+            } catch (error) {
+              throw new Error('Invalid JSON format for --step-node');
+            }
+          }
+
+          if (options.relatedNodes) {
+            try {
+              relatedNodes = JSON.parse(options.relatedNodes);
+            } catch (error) {
+              throw new Error('Invalid JSON format for --related-nodes');
+            }
+          }
+
+          if (options.additionalInfo) {
+            additionalInfo = options.additionalInfo;
+          }
+
+          // 执行部分更新
+          await updateStep(taskData, numE2EIndex, numStepIndex, {
+            ...(name && { name }),
+            ...(filePath && { filePath }),
+            ...(action && { action: action as 'create' | 'modify' | 'delete' }),
+            ...(stepNode && { stepNode }),
+            ...(relatedNodes && { relatedNodes }),
+            ...(additionalInfo && { additionalInfo }),
+          });
+          await writeTaskFileAtomic(config.currentSpecPath, taskData);
+          console.log(formatStepUpdateSuccess(numE2EIndex, numStepIndex, name || 'step updated'));
+          return;
+        }
+
+        // 验证必需参数（用于插入模式）
         if (!name || !filePath || !action) {
           throw new Error(
-            'Name, file_path, and action are required for update/insert'
+            'Name, file_path, and action are required for insert mode'
           );
         }
 
@@ -524,7 +586,7 @@ export const stepUpdateAction = new Command('update')
           throw new Error('Action must be one of: create, modify, delete');
         }
 
-        // 解析可选参数
+        // 解析可选参数（用于插入模式）
         let relatedNodes: string[] = [];
         let stepNode: { modPath: string; pkgPath: string; name: string } | undefined;
         let additionalInfo: string | undefined;
@@ -549,17 +611,6 @@ export const stepUpdateAction = new Command('update')
           additionalInfo = options.additionalInfo;
         }
 
-        // 智能选择模式：检查 E2E task 是否存在
-        const e2eTaskIndex = taskData.e2eTasks.findIndex(
-          (t) => t.index === numE2EIndex
-        );
-
-        if (e2eTaskIndex === -1) {
-          throw new Error(`E2E task with index ${numE2EIndex} not found`);
-        }
-
-        const e2eTask = taskData.e2eTasks[e2eTaskIndex];
-
         // 智能选择 step index：空 steps 列表时自动为 0，否则递增
         let numStepIndexAdjusted: number;
         let useInsertMode = false;
@@ -569,26 +620,17 @@ export const stepUpdateAction = new Command('update')
           numStepIndexAdjusted = 0;
           useInsertMode = true;
         } else {
-          // 检查 step 是否存在
-          const stepExists = e2eTask.steps.some((s) => s.index === numStepIndex);
+          // step 不存在：自动选择下一个连续位置
+          const maxIndex = Math.max(
+            ...e2eTask.steps
+              .filter((s) => typeof s.index === 'number')
+              .map((s) => s.index as number),
+            0
+          );
 
-          if (!stepExists) {
-            // step 不存在：自动选择下一个连续位置
-            const maxIndex = Math.max(
-              ...e2eTask.steps
-                .filter((s) => typeof s.index === 'number')
-                .map((s) => s.index as number),
-              0
-            );
-
-            // 智能插入：自动选择下一个位置
-            numStepIndexAdjusted = maxIndex; // 在最后一个位置后插入
-            useInsertMode = true;
-          } else {
-            // step 存在：使用 update 模式
-            numStepIndexAdjusted = numStepIndex;
-            useInsertMode = false;
-          }
+          // 智能插入：自动选择下一个位置
+          numStepIndexAdjusted = maxIndex; // 在最后一个位置后插入
+          useInsertMode = true;
         }
 
         // 根据智能选择的模式执行更新或插入
