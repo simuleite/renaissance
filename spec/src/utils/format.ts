@@ -63,6 +63,89 @@ export function formatUncompletedSuccess(index: number, name: string): string {
 }
 
 /**
+ * 格式化批量创建成功输出
+ */
+export function formatBatchCreateSuccess(count: number, names: string[]): string {
+  const lines: string[] = [];
+  lines.push(chalk.green(`✓ Batch created ${count} E2E tasks:`));
+  names.forEach((name, i) => {
+    lines.push(`  [${i + 1}] ${name}`);
+  });
+  return lines.join('\n');
+}
+
+/**
+ * 格式化 Step 更新成功输出
+ */
+export function formatStepUpdateSuccess(
+  e2eIndex: number,
+  stepIndex: number,
+  name: string
+): string {
+  return chalk.green('✓ Updated: ') + `[${e2eIndex}.${stepIndex}] ${name}`;
+}
+
+/**
+ * 格式化 Step 删除成功输出
+ */
+export function formatStepDeleteSuccess(
+  e2eIndex: number,
+  stepIndex: number,
+  name: string
+): string {
+  return chalk.green('✓ Deleted: ') + `[${e2eIndex}.${stepIndex}] ${name}`;
+}
+
+/**
+ * 格式化 Step 插入成功输出
+ */
+export function formatStepInsertSuccess(
+  e2eIndex: number,
+  stepIndex: number,
+  name: string
+): string {
+  return chalk.green('✓ Inserted: ') + `[${e2eIndex}.${stepIndex}] ${name}`;
+}
+
+/**
+ * 格式化 Step 完成状态更新输出
+ */
+export function formatStepCompletedSuccess(
+  e2eIndex: number,
+  stepIndex: number,
+  name: string
+): string {
+  return chalk.green('✓ Completed: ') + `[${e2eIndex}.${stepIndex}] ${name}`;
+}
+
+/**
+ * 格式化 Step 取消完成状态输出
+ */
+export function formatStepUncompletedSuccess(
+  e2eIndex: number,
+  stepIndex: number,
+  name: string
+): string {
+  return chalk.green('✓ Uncompleted: ') + `[${e2eIndex}.${stepIndex}] ${name}`;
+}
+
+/**
+ * 格式化 Step 批量创建成功输出
+ */
+export function formatStepBatchCreateSuccess(
+  e2eIndex: number,
+  count: number,
+  names: string[]
+): string {
+  const lines: string[] = [];
+  lines.push(chalk.green(`✓ Batch created ${count} steps in E2E task [${e2eIndex}]:`));
+  names.forEach((name, i) => {
+    lines.push(`  [${e2eIndex}.${i + 1}] ${name}`);
+  });
+  return lines.join('\n');
+}
+
+/**
  * 格式化任务列表输出
  */
 export function formatTaskList(task: CodeTask): string {

@@ -1,5 +1,14 @@
 // CODE_TASK Specification 数据结构定义
 
+/**
+ * Step 状态枚举
+ */
+export enum StepStatus {
+  PENDING = 'pending',              // 待办（默认）
+  COMPLETED = 'completed',          // 已完成
+  NEED_AST_NODE = 'need_ast_node'  // 待补 AST 节点
+}
+
 export interface CodeTask {
   metadata: {
     repoName: string;        // 仓库标识（go.mod module 或 package.json name）
@@ -31,6 +40,7 @@ export interface Step {
   relatedNodes: string[];           // 相关的node_ids数组
   action: 'modify' | 'create' | 'delete';  // 动作类型
   completed: boolean;               // 完成状态
+  status?: StepStatus;              // Step 状态（默认 PENDING）
 
   // action=modify时必填
   stepNode?: {
