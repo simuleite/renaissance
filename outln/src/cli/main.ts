@@ -75,9 +75,9 @@ program
     }
   });
 
-// Read command: read specific symbol
+// Read command: read specific symbol or list all symbols
 program
-  .command('read <file> <symbol>')
+  .command('read <file> [symbol]')
   .description('Read a specific symbol and extract its code')
   .option('--output-format <type>', 'output format (compact|rich|json)', 'compact')
   .option('-o, --output <file>', 'output to file instead of stdout')
@@ -113,6 +113,13 @@ program
 
       // Extract symbols
       const symbols = await provider.getSymbols(file, source);
+
+      // If no symbol provided, list all available symbols
+      if (!symbolName) {
+        console.error(`Available symbols in ${file}:`);
+        listAvailableSymbols(symbols, '');
+        process.exit(0);
+      }
 
       // Find the target symbol
       const targetSymbol = findSymbolByName(symbols, symbolName);
