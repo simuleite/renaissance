@@ -14,6 +14,14 @@ import {
   formatStepBatchCreateSuccess,
 } from '../utils/format';
 import { CodeTask, Step } from '../types';
+import {
+  findNextIncompleteStep,
+  findNextE2EWithIncompleteSteps,
+  checkAndAutoCompleteE2E,
+  formatScheduleNextStep,
+  formatScheduleNextE2E,
+  formatE2EAutoCompleted,
+} from '../utils/schedule';
 
 /**
  * 检查 Step 状态，拦截对 NEED_AST_NODE 状态 Step 的非法操作
@@ -506,6 +514,30 @@ export const stepUpdateAction = new Command('update')
           await writeTaskFileAtomic(config.currentSpecPath, taskData);
           if (completed) {
             console.log(formatStepCompletedSuccess(numE2EIndex, numStepIndex, result.name));
+
+            // 调度逻辑：检查并输出下一步
+            const e2eTask = taskData.e2eTasks.find((t) => t.index === numE2EIndex);
+            if (e2eTask) {
+              // 检查是否自动完成 E2E
+              const wasAutoCompleted = checkAndAutoCompleteE2E(taskData, numE2EIndex);
+              if (wasAutoCompleted) {
+                console.log(formatE2EAutoCompleted(numE2EIndex, e2eTask.name));
+                await writeTaskFileAtomic(config.currentSpecPath, taskData);
+
+                // 查找下一个 E2E
+                const nextE2E = findNextE2EWithIncompleteSteps(taskData, numE2EIndex);
+                if (nextE2E) {
+                  console.log(formatScheduleNextE2E(nextE2E, nextE2E.index as number));
+                }
+              } else {
+                // 查找下一个 step
+                const nextStep = findNextIncompleteStep(e2eTask, numStepIndex);
+                if (nextStep) {
+                  const nextStepIndex = nextStep.index as number;
+                  console.log(formatScheduleNextStep(nextStep, numE2EIndex, nextStepIndex));
+                }
+              }
+            }
           } else {
             console.log(formatStepUncompletedSuccess(numE2EIndex, numStepIndex, result.name));
           }

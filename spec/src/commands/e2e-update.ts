@@ -379,14 +379,18 @@ export const e2eUpdateCommand = new Command('update')
 
         // 完成状态切换
         if (options.complete || options.uncomplete) {
-          const completed = options.complete ? true : false;
-          const result = await updateE2EStatus(taskData, numIndex, completed);
-          await writeTaskFileAtomic(config.currentSpecPath, taskData);
-          if (completed) {
-            console.log(formatCompletedSuccess(numIndex, result.name));
-          } else {
-            console.log(formatUncompletedSuccess(numIndex, result.name));
+          if (options.complete) {
+            // 禁用手动完成 E2E，引导用户使用 step complete
+            console.error(chalk.red('Error: E2E tasks cannot be manually completed.'));
+            console.log(chalk.yellow('\nHint: E2E tasks are automatically completed when all their steps are finished.'));
+            console.log(chalk.yellow('Use: spec step update <e2e_index> <step_index> --complete'));
+            process.exit(1);
           }
+
+          // 允许取消完成
+          const result = await updateE2EStatus(taskData, numIndex, false);
+          await writeTaskFileAtomic(config.currentSpecPath, taskData);
+          console.log(formatUncompletedSuccess(numIndex, result.name));
           return;
         }
 
