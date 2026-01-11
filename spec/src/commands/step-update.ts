@@ -697,9 +697,9 @@ export const stepUpdateAction = new Command('update')
           );
         }
 
-        // 如果 step 存在（更新模式），允许部分参数
-        if (stepExists && (!name || !filePath || !action)) {
-          // 解析可选参数（即使没有提供 name/filePath/action，也可以提供其他参数）
+        // 如果 step 存在（更新模式），允许部分或完整参数
+        if (stepExists) {
+          // 解析可选参数
           let stepNode: { mod_path: string; pkg_path: string; name: string }[] | undefined;
           let relatedNodes: string[] | undefined;
           let additionalInfo: string | undefined;
@@ -726,7 +726,14 @@ export const stepUpdateAction = new Command('update')
             additionalInfo = options.additionalInfo;
           }
 
-          // 执行部分更新
+          // 如果提供了完整参数（name, filePath, action），验证 action 值
+          if (name && filePath && action) {
+            if (!['create', 'modify', 'delete'].includes(action)) {
+              throw new Error('Action must be one of: create, modify, delete');
+            }
+          }
+
+          // 执行更新（支持部分更新和完整更新）
           await updateStep(taskData, numE2EIndex, numStepIndex, {
             ...(name && { name }),
             ...(filePath && { filePath }),
@@ -740,14 +747,14 @@ export const stepUpdateAction = new Command('update')
           return;
         }
 
-        // 验证必需参数（用于插入模式）
+        // Step 不存在（插入模式）：验证必需参数
         if (!name || !filePath || !action) {
           throw new Error(
             'Name, file_path, and action are required for insert mode'
           );
         }
 
-        // 验证 action 值
+        // 验证 action 值（用于插入模式）
         if (!['create', 'modify', 'delete'].includes(action)) {
           throw new Error('Action must be one of: create, modify, delete');
         }
