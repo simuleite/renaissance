@@ -52,6 +52,22 @@ async function insertE2ETask(
   afterIndex: number,
   newTask: Partial<E2ETask>
 ): Promise<void> {
+  // 如果任务列表为空，直接创建第一个任务
+  if (taskData.e2eTasks.length === 0) {
+    const newNode: E2ETask = {
+      index: 1,
+      name: newTask.name!,
+      e2eInput: newTask.e2eInput!,
+      e2eOutput: newTask.e2eOutput!,
+      completed: false,
+      steps: [],
+      prevE2EIndex: 'start',
+      nextE2EIndex: 'end',
+    };
+    taskData.e2eTasks.push(newNode);
+    return;
+  }
+
   const afterTaskIndex = taskData.e2eTasks.findIndex(
     (t) => t.index === afterIndex
   );
@@ -301,14 +317,56 @@ export const e2eUpdateCommand = new Command('update')
           return;
         }
 
-        // 验证 index 参数
-        if (!index) {
-          throw new Error('Index is required');
+        // 验证必需参数（对于update/insert模式）
+        if (!name || !input || !output) {
+          throw new Error(
+            'Name, input, and output are required for update/insert'
+          );
         }
 
-        const numIndex = parseInt(index, 10);
-        if (isNaN(numIndex)) {
-          throw new Error('Invalid index format');
+        // 智能选择index：空任务列表时自动为1，否则递增
+        let numIndex: number;
+        let useInsertMode = false;
+
+        if (taskData.e2eTasks.length === 0) {
+          // 空任务列表：自动选择index 1
+          numIndex = 0; // 使用0作为插入点，insertE2ETask会自动转换为1
+          useInsertMode = true;
+        } else if (!index) {
+          // 未提供index：自动选择下一个可用index
+          const maxIndex = Math.max(
+            ...taskData.e2eTasks
+              .filter((t) => typeof t.index === 'number')
+              .map((t) => t.index as number),
+            0
+          );
+          numIndex = maxIndex;
+          useInsertMode = true;
+        } else {
+          const parsedIndex = parseInt(index, 10);
+          if (isNaN(parsedIndex)) {
+            throw new Error('Invalid index format');
+          }
+
+          // 检查index是否存在
+          const taskExists = taskData.e2eTasks.some((t) => t.index === parsedIndex);
+          if (!taskExists) {
+            // index不存在：智能选择下一个位置
+            const maxIndex = Math.max(
+              ...taskData.e2eTasks
+                .filter((t) => typeof t.index === 'number')
+                .map((t) => t.index as number),
+              0
+            );
+
+            // 智能插入：自动选择下一个位置
+            numIndex = maxIndex; // 在最后一个位置后插入
+            useInsertMode = true;
+          } else {
+            // index存在：使用update模式
+            numIndex = parsedIndex;
+            useInsertMode = false;
+          }
         }
 
         // 删除模式
@@ -332,15 +390,8 @@ export const e2eUpdateCommand = new Command('update')
           return;
         }
 
-        // 验证必需参数
-        if (!name || !input || !output) {
-          throw new Error(
-            'Name, input, and output are required for update/insert'
-          );
-        }
-
-        // 插入模式
-        if (options.insert) {
+        // 根据智能选择的模式执行更新或插入
+        if (useInsertMode || options.insert) {
           await insertE2ETask(taskData, numIndex, {
             name,
             e2eInput: input,
@@ -348,17 +399,15 @@ export const e2eUpdateCommand = new Command('update')
           });
           await writeTaskFileAtomic(config.currentSpecPath, taskData);
           console.log(formatInsertSuccess(numIndex + 1, name));
-          return;
+        } else {
+          await updateE2ETask(taskData, numIndex, {
+            name,
+            e2eInput: input,
+            e2eOutput: output,
+          });
+          await writeTaskFileAtomic(config.currentSpecPath, taskData);
+          console.log(formatUpdateSuccess(numIndex, name));
         }
-
-        // 基础更新模式
-        await updateE2ETask(taskData, numIndex, {
-          name,
-          e2eInput: input,
-          e2eOutput: output,
-        });
-        await writeTaskFileAtomic(config.currentSpecPath, taskData);
-        console.log(formatUpdateSuccess(numIndex, name));
       } catch (error) {
         if (error instanceof Error) {
           console.error(chalk.red(`Error: ${error.message}`));

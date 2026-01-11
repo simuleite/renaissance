@@ -111,6 +111,40 @@ async function insertStep(
   }
 
   const e2eTask = taskData.e2eTasks[e2eTaskIndex];
+
+  // 如果 steps 数组为空，直接创建第一个 step
+  if (e2eTask.steps.length === 0) {
+    const newNode: Step = {
+      e2eIndex: e2eIndex,
+      index: 1,
+      name: newStep.name!,
+      filePath: newStep.filePath!,
+      relatedNodes: newStep.relatedNodes || [],
+      action: newStep.action!,
+      completed: false,
+      status: newStep.action === 'modify' && !newStep.stepNode
+        ? StepStatus.NEED_AST_NODE
+        : StepStatus.PENDING,
+      stepNode: newStep.stepNode,
+      additionalInfo: newStep.additionalInfo,
+      prevStepIndex: 'start',
+      nextStepIndex: 'end',
+    };
+
+    // 验证 action=modify 时是否提供 stepNode
+    if (newStep.action === 'modify' && !newStep.stepNode) {
+      console.warn(chalk.yellow(
+        `\n⚠ Warning: Step created but missing required stepNode\n` +
+        `  Status: ${StepStatus.NEED_AST_NODE}\n` +
+        `  Hint: Update with: spec step update ${e2eIndex} 1 ` +
+        `--step-node '{"modPath":"...","pkgPath":"...","name":"..."}'\n`
+      ));
+    }
+
+    e2eTask.steps.push(newNode);
+    return;
+  }
+
   const afterStepIndexInArray = e2eTask.steps.findIndex(
     (s) => s.index === afterStepIndex
   );
@@ -515,9 +549,51 @@ export const stepUpdateAction = new Command('update')
           additionalInfo = options.additionalInfo;
         }
 
-        // 插入模式
-        if (options.insert) {
-          await insertStep(taskData, numE2EIndex, numStepIndex, {
+        // 智能选择模式：检查 E2E task 是否存在
+        const e2eTaskIndex = taskData.e2eTasks.findIndex(
+          (t) => t.index === numE2EIndex
+        );
+
+        if (e2eTaskIndex === -1) {
+          throw new Error(`E2E task with index ${numE2EIndex} not found`);
+        }
+
+        const e2eTask = taskData.e2eTasks[e2eTaskIndex];
+
+        // 智能选择 step index：空 steps 列表时自动为 0，否则递增
+        let numStepIndexAdjusted: number;
+        let useInsertMode = false;
+
+        if (e2eTask.steps.length === 0) {
+          // 空 steps 列表：使用 0 作为插入点（insertStep 会转换为 1）
+          numStepIndexAdjusted = 0;
+          useInsertMode = true;
+        } else {
+          // 检查 step 是否存在
+          const stepExists = e2eTask.steps.some((s) => s.index === numStepIndex);
+
+          if (!stepExists) {
+            // step 不存在：自动选择下一个连续位置
+            const maxIndex = Math.max(
+              ...e2eTask.steps
+                .filter((s) => typeof s.index === 'number')
+                .map((s) => s.index as number),
+              0
+            );
+
+            // 智能插入：自动选择下一个位置
+            numStepIndexAdjusted = maxIndex; // 在最后一个位置后插入
+            useInsertMode = true;
+          } else {
+            // step 存在：使用 update 模式
+            numStepIndexAdjusted = numStepIndex;
+            useInsertMode = false;
+          }
+        }
+
+        // 根据智能选择的模式执行更新或插入
+        if (useInsertMode || options.insert) {
+          await insertStep(taskData, numE2EIndex, numStepIndexAdjusted, {
             name,
             filePath,
             relatedNodes,
@@ -527,20 +603,18 @@ export const stepUpdateAction = new Command('update')
           });
           await writeTaskFileAtomic(config.currentSpecPath, taskData);
           console.log(formatStepInsertSuccess(numE2EIndex, numStepIndex + 1, name));
-          return;
+        } else {
+          await updateStep(taskData, numE2EIndex, numStepIndexAdjusted, {
+            name,
+            filePath,
+            relatedNodes,
+            action: action as 'create' | 'modify' | 'delete',
+            stepNode,
+            additionalInfo,
+          });
+          await writeTaskFileAtomic(config.currentSpecPath, taskData);
+          console.log(formatStepUpdateSuccess(numE2EIndex, numStepIndex, name));
         }
-
-        // 基础更新模式
-        await updateStep(taskData, numE2EIndex, numStepIndex, {
-          name,
-          filePath,
-          relatedNodes,
-          action: action as 'create' | 'modify' | 'delete',
-          stepNode,
-          additionalInfo,
-        });
-        await writeTaskFileAtomic(config.currentSpecPath, taskData);
-        console.log(formatStepUpdateSuccess(numE2EIndex, numStepIndex, name));
       } catch (error) {
         if (error instanceof Error) {
           console.error(chalk.red(`Error: ${error.message}`));
